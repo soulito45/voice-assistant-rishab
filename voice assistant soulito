@@ -1,0 +1,85 @@
+import speech_recognition as sr
+import pyttsx3
+import requests
+import webbrowser
+from datetime import datetime
+engine = pyttsx3.init()
+voices = engine.getProperty("voices")
+engine.setProperty("voice", voices[0].id)  
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+def recognize_voice():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        speak("mai apko sun raha hu...")
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            command = recognizer.recognize_google(audio)
+            return command.lower()
+        except sr.UnknownValueError:
+            speak("Sorry, mai apko sun nahi saka.")
+            return ""
+        except sr.RequestError:
+            speak("There is an issue with the voice recognition service.")
+            return ""
+def get_latest_news(api_key):
+    try:
+        url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={api_key}"
+        response = requests.get(url)
+        print(f"API Response: {response.status_code}, {response.text}")
+        if response.status_code == 200:
+            news_data = response.json()
+            articles = news_data.get("articles", [])
+            if articles:
+                speak("Here are the top headlines:")
+                for i, article in enumerate(articles[:4], 1):  
+                    title = article.get("title", "No title available")
+                    speak(f"Headline {i}: {title}")
+            else:
+                speak("I couldn't find any news articles.")
+        else:
+            speak("An error occurred while fetching the news. Please try again later.")
+    except Exception as e:
+        speak(f"An unexpected error occurred: {e}")
+def process_command(command, news_api_key):
+    if "news" in command:
+        get_latest_news(news_api_key)
+    elif "time" in command:
+        time_info = datetime.now().strftime("abhi ka time hai %H:%M.")
+        speak(time_info)
+    elif "date" in command:
+        today = datetime.now().strftime("aaj ki date hai %B %d, %Y.")
+        speak(today)
+    elif "reminder" in command:
+        speak("What should I remind you about?")
+        reminder = recognize_voice()
+        if reminder:
+            speak(f"Reminder set: {reminder}")
+    elif "open" in command or "browse" in command:
+        if "google" in command:
+            webbrowser.open("https://www.google.com")
+            speak("Opening Google")
+        elif "youtube" in command:
+            webbrowser.open("https://www.youtube.com")
+            speak("Opening YouTube")
+        else:
+            speak("Which website should I open?")
+            site = recognize_voice()
+            if site:
+                webbrowser.open(f"https://{site}")
+                speak(f"Opening {site}")
+    else:
+        speak("Main samachar, samay, tareekh, reminder set karne ya web browse karne mein madad kar sakta hoon.")
+def main():
+    news_api_key = "4a34452b6e0144c9b9659839575175e6"
+    speak("Hello, mera naam soulito hai. mai apki madat kaise kr sakta hu?")
+    while True:
+        command = recognize_voice()
+        if "exit" in command or "band karo" in command:
+            speak("alwida!")
+            break
+        elif command:
+            process_command(command, news_api_key)
+if __name__ == "__main__":
+    main()
